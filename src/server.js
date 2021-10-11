@@ -7,18 +7,20 @@ const cors = require('cors')
 
 const app = express();
 
+const config = require('./config.js')
+
 app.use(cors({origin: 'http://localhost:4200'})) 
-app.set('port',process.env.PORT || 3000);
+app.set('port',config.PORT);
 app.use(express.json());
 app.use(express.urlencoded({extended : true}))
 
 
 const dbOptions = {
-    host: 'b6tdvmqqhr8wgku7h89i-mysql.services.clever-cloud.com',
-    port: 3306,
-    user: 'ut1ijyaf9liworgo',
-    password: 'dyO8YPrG1zo12nKodvX7',
-    database: 'b6tdvmqqhr8wgku7h89i'
+    host: config.HOST_MYSQL,
+    port: config.PORT_MYSQ,
+    user: config.USER_MYSQL,
+    password: config.PASSWORD_MYSQL,
+    database: config.DATABASE_MYSQL
 }
 
 //middlewares-------------------
