@@ -52,4 +52,13 @@ pdfs.post('/subir',authenticateJWT,multipartMiddleware,(req,res)=>{
     return res.json({"direccion": path.join(__dirname,'..',req.files.null.path,'..',file)});
 });
 
+pdfs.post('/getpdf',authenticateJWT,function(req,res, next) {
+    console.log(req.body);
+    const {direccion} =req.body;
+    fs.readFile(direccion , function (err,data){
+        res.contentType("application/pdf");
+        res.send(data);
+    });
+    
+})
 module.exports = pdfs;
