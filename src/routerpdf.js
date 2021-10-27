@@ -52,13 +52,17 @@ pdfs.post('/subir',authenticateJWT,multipartMiddleware,(req,res)=>{
     return res.json({"direccion": path.join(__dirname,'..',req.files.null.path,'..',file)});
 });
 
-pdfs.post('/getpdf',authenticateJWT,function(req,res, next) {
-    console.log(req.body);
-    const {direccion} =req.body;
-    fs.readFile(direccion , function (err,data){
+pdfs.get('/getpdf/:namePdf',authenticateJWT,function(req,res, next) {
+    const namePdf=req.params.namePdf;
+    fs.readFile(path.join(__dirname,'..','\\public\\upload',namePdf) , function (err,data){
         res.contentType("application/pdf");
         res.send(data);
     });
     
 })
+pdfs.delete('/deletepdf/:namePdf',authenticateJWT,function(req,res,next){
+    const namePdf = req.params.namePdf;
+    fs.unlinkSync(path.join(__dirname,'..','\\public\\upload',namePdf))
+    return res.send("el pdf ha sido eliminado");
+});
 module.exports = pdfs;
