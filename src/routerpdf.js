@@ -1,7 +1,6 @@
 const express = require ('express');
 const pdfs = express.Router();
 const path = require('path');
-const bodyparser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const multipart = require('connect-multiparty');
 const fs = require('fs');
@@ -15,7 +14,6 @@ const authenticateJWT = (req,res,next) =>{
 
     if (authHeader){
         const token = authHeader.split(' ')[1];
-
         jwt.verify(token,accessTokenSecret, (err,user)=>{
             if (err){
                 return res.sendStatus(403);

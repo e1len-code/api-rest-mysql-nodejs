@@ -1,7 +1,12 @@
 const express = require('express');
 const routes = express.Router()
 const jwt = require('jsonwebtoken');
-const path = require('path')
+const path = require('path');
+
+var hoy = new Date();
+var fecha = hoy.getFullYear() + '-' + ( hoy.getMonth() + 1 )+'-'+hoy.getDate();
+var hora = hoy.getHours() + ':' + hoy.getMinutes() + ':' + hoy.getSeconds();
+var fechaYHora = fecha + ' ' + hora;
 
 routes.use(express.json());
 routes.use(express.urlencoded({extended: true}));
@@ -65,35 +70,85 @@ routes.get('/resoluciones',authenticateJWT, (req,res)=>{
     
 })
 
+//GET TOP RESOLUCIONES
+routes.get('/top10resoluciones',authenticateJWT,(req,res)=>{
+    const{rol} = req.user;
+    if (rol == 'Tramite'|| rol == 'Admin' || rol == 'Normal'){
+        req.getConnection((err,conn)=> {
+            if (err) return res.send(err)
+            conn.query('SELECT * FROM tresolucion ORDER BY fecha DESC LIMIT 10',(err,rows)=>{
+                if (err) return res.send(err);
+                res.json(rows);
+            })
+        })
+    }
+})
+
 //POST USERS
 routes.post('/',authenticateJWT, (req,res)=>{
 
     const {rol} = req.user;
-    console.log(req.body);
-    if ( length(req.body.dni.length == 8)){
-        if (rol == 'Admin'){
-            req.getConnection((err, conn)=> {
-                if(err) return res.send(err)
-                conn.query('INSERT INTO tusers set ? ',[req.body],(err)=>{
-                    if(err) return res.send(err);
-                    res.send("true");
-                })
+    if (rol == 'Admin'){
+        req.getConnection((err, conn)=>{
+            if (err) return res.send(err);
+            conn.query('SELECT * FROM tusers WHERE dni= ?',[req.body.dni],(err,rows)=>{
+                if (err) return res.send(err);
+                console.log(rows.length);
+                if (rows.length==0){
+                    if (req.body.dni.length == 8){
+                        conn.query ('INSERT INTO tusers set ?', [req.body],(err)=>{
+                            if (err) return res.send(err);
+                            res.json({
+                                "key": "true",
+                                "value":"El usuario ha sido guardado exitósamente"
+                            })
+                        })
+                    }
+                    else{
+                        res.json({
+                            "key": "false",
+                            "value":"El DNI debe de ser exactamente de 8 dígitos"
+                        })
+                    }
+                }else{
+                    res.json({
+                        "key": "false",
+                        "value":"El DNI ya existe en la lista de usuarios"
+                    })   
+                }
             })
-        }
-        else{return res.sendStatus(403);}
-    }else { res.send("Error! el DNI debe ser de 8 digitos")}
+        })
+    }else{
+        res.sendStatus(403);
+    }
+    
 })
 
 //POST RESOLUCIONES
 routes.post('/resoluciones',authenticateJWT,(req,res)=>{
     const {rol} = req.user;
+    req.body.fecha= fechaYHora;
     if (rol == 'Admin' || rol == 'Tramites'){
         req.getConnection((err, conn)=> {
             if(err) return res.send(err)
-            conn.query('INSERT INTO tresolucion set ? ',[req.body],(err)=>{
-                if(err) return res.send(err);
-                res.send("true");
+            conn.query('SELECT * FROM tresolucion where numero= ? ',[req.body.numero],(err,rows)=>{
+                if (err) return res.send(err);
+                if (rows == 0){
+                    conn.query('INSERT INTO tresolucion set ? ',[req.body],(err)=>{
+                        if(err) return res.send(err);
+                        res.json({
+                            "key":"true",
+                            "value":"La resolución se guardó correctamente"
+                        })
+                    })
+                }else{
+                    res.json({
+                        "key":"false",
+                        "value":"El número de resolucion ya existe en la lista de resoluciones"
+                    })
+                }
             })
+            
         })
     }
     else {return res.sendStatus(403);}
@@ -108,11 +163,18 @@ routes.delete('/:dni',authenticateJWT, (req,res)=>{
             if(err) return res.send(err)
             conn.query('SELECT * FROM tusers WHERE dni= ? ',[req.params.dni],(err,rows)=>{
                 if(err) return res.send(err);
-                if (rows[0] == undefined) return res.send("no se encuentra el user");
-                else{
+                if (rows[0] == undefined){
+                    res.json({
+                        "key":"false",
+                        "value":"El usuario non existe en la lista de usuarios"
+                    })
+                }else{
                     conn.query('DELETE FROM tusers where dni = ? ',[req.params.dni],(err)=>{
                         if(err) return res.send(err);
-                        return res.send("el user ha sido eliminado");
+                        res.json({
+                            "key":"true",
+                            "value":"El usuario se eliminó correctamente"
+                        })
                     })
                 }
             })
@@ -127,17 +189,21 @@ routes.delete('/resoluciones/:numero',authenticateJWT, (req,res)=>{
 
     const {rol} = req.user;
     if (rol == 'Admin'){
-
-        
         req.getConnection((err, conn)=> {
             if(err) return res.send(err)
             conn.query('SELECT * FROM tresolucion WHERE numero= ? ',[req.params.numero],(err,rows)=>{
                 if(err) return res.send(err);
-                if (rows[0] == undefined) return res.send("no se encuentra la resolucion");
+                if (rows[0] == undefined) res.json({
+                    "key":"false",
+                    "value":"La resolución ne existe en la lista de resoluciones"
+                });
                 else{
                     conn.query('DELETE FROM tresolucion where numero = ? ',[req.params.numero],(err)=>{
                         if(err) return res.send(err);
-                        return res.send("la resolucion ha sido eliminado");
+                        res.json({
+                            "key":"true",
+                            "value":"La resolucion se eliminó correctamente"
+                        });
                     })
                 }
             })
@@ -151,12 +217,24 @@ routes.put('/:dni',authenticateJWT, (req,res)=>{
 
     const {rol} = req.user;
     if (rol == 'Admin'){
-
         req.getConnection((err, conn)=> {
             if(err) return res.send(err)
-            conn.query('UPDATE tusers set ? WHERE dni= ?',[req.body, req.params.dni],(err)=>{
-                if(err) return res.send(err);
-                res.send("el usuario ha sido actualizado correctamente");
+
+            conn.query ('SELECT * FROM tusers WHERE dni= ?',[req.params.dni], (err,rows)=>{
+                if (err) return res.send(err)
+                if (rows[0]== undefined) res.json({
+                    "key":"false",
+                    "value":"El usuario no existe en la lista de usuarios"
+                })
+                else{
+                    conn.query('UPDATE tusers set ? WHERE dni= ?',[req.body, req.params.dni],(err)=>{
+                        if(err) return res.send(err);
+                        res.json({
+                            "key":"true",
+                            "value":"El usuario se actualizó correctamente"
+                        })
+                    })
+                }
             })
         })
     }
@@ -170,12 +248,21 @@ routes.put('/resoluciones/:numero',authenticateJWT, (req,res)=>{
     const {rol} = req.user;
     if (rol == 'Admin' || rol =='Tramite'){
 
-        req.getConnection((err, conn)=> {
-            if(err) return res.send(err)
-            conn.query('UPDATE tresolucion set ? WHERE numero= ?',[req.body, req.params.numero],(err)=>{
-                if(err) return res.send(err);
-                res.send("el usuario ha sido actualizado correctamente");
+        conn.query ('SELECT * FROM tresolucion WHERE numero= ?',[req.params.numero], (err,rows)=>{
+            if (err) return res.send(err)
+            if (rows[0]== undefined) res.json({
+                "key":"false",
+                "value":"La resolución no existe en la lista de resoluciones"
             })
+            else{
+                conn.query('UPDATE tresolucion set ? WHERE numero= ?',[req.body, req.params.numero],(err)=>{
+                    if(err) return res.send(err);
+                    res.json({
+                        "key":"true",
+                        "value":"La resolución se actualizó correctamente"
+                    })
+                })
+            }
         })
     }
     else{return res.sendStatus(403);}
@@ -321,6 +408,7 @@ routes.get('/resoluciones/filtro/asunto/:campos',authenticateJWT,(req,res)=>{
     }
     else {return res.sendStatus(403);}
 })
+
 //FILTROS resoluciones
 routes.get('/resoluciones/filtro/fecha/:campos',authenticateJWT,(req,res)=>{
 
@@ -337,4 +425,5 @@ routes.get('/resoluciones/filtro/fecha/:campos',authenticateJWT,(req,res)=>{
     }
     else {return res.sendStatus(403);}
 })
+
 module.exports = routes
