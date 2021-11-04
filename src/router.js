@@ -166,7 +166,7 @@ routes.delete('/:dni',authenticateJWT, (req,res)=>{
                 if (rows[0] == undefined){
                     res.json({
                         "key":"false",
-                        "value":"El usuario non existe en la lista de usuarios"
+                        "value":"El usuario no existe en la lista de usuarios"
                     })
                 }else{
                     conn.query('DELETE FROM tusers where dni = ? ',[req.params.dni],(err)=>{
@@ -246,23 +246,26 @@ routes.put('/:dni',authenticateJWT, (req,res)=>{
 //ACTUALIZAR resolucion
 routes.put('/resoluciones/:numero',authenticateJWT, (req,res)=>{
     const {rol} = req.user;
+    req.body.fecha= fechaYHora;
     if (rol == 'Admin' || rol =='Tramite'){
-
-        conn.query ('SELECT * FROM tresolucion WHERE numero= ?',[req.params.numero], (err,rows)=>{
-            if (err) return res.send(err)
-            if (rows[0]== undefined) res.json({
-                "key":"false",
-                "value":"La resolución no existe en la lista de resoluciones"
-            })
-            else{
-                conn.query('UPDATE tresolucion set ? WHERE numero= ?',[req.body, req.params.numero],(err)=>{
-                    if(err) return res.send(err);
-                    res.json({
-                        "key":"true",
-                        "value":"La resolución se actualizó correctamente"
-                    })
+        req.getConnection((err, conn)=> {
+            if(err) return res.send(err)
+            conn.query ('SELECT * FROM tresolucion WHERE numero= ?',[req.params.numero], (err,rows)=>{
+                if (err) return res.send(err)
+                if (rows[0]== undefined) res.json({
+                    "key":"false",
+                    "value":"La resolución no existe en la lista de resoluciones"
                 })
-            }
+                else{
+                    conn.query('UPDATE tresolucion set ? WHERE numero= ?',[req.body, req.params.numero],(err)=>{
+                        if(err) return res.send(err);
+                        res.json({
+                            "key":"true",
+                            "value":"La resolución se actualizó correctamente"
+                        })
+                    })
+                }
+            })
         })
     }
     else{return res.sendStatus(403);}
