@@ -316,7 +316,10 @@ routes.post('/login', (req,res)=>{
 
             if (err) return res.send(err);
             else{
-                if (rows[0]==undefined) return res.send("Error al poner usuario y/o contraseña")
+                if (rows[0]==undefined) return res.json({
+                    "key":"false",
+                    "value":"El usuario y/o contraseña son incorrectos"
+                })
                 else {
                     const accessToken = jwt.sign({ nombres: rows[0].nombres, rol: rows[0].rol},accessTokenSecret);
                     res.json({
